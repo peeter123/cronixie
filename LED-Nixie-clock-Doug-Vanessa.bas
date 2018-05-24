@@ -1,7 +1,7 @@
 ' *************************************
 ' *      LED-NIXIE Clock Demo         *
 ' *  LED-Basic >= 15.1.15 required    *
-' *  modified by Vanessa Ver. 1.52    *
+' *  modified by Vanessa Ver. 1.60    *
 ' *  partially from Dougs's ver.D1.02 *
 ' *************************************
 '
@@ -148,8 +148,8 @@
 '
 ' Version
     LED.iled(2, 30 + read 10, 1)
-    LED.iled(2, 40 + read 10, 5)
-    LED.iled(2, 50 + read 10, 2)
+    LED.iled(2, 40 + read 10, 6)
+    LED.iled(2, 50 + read 10, 0)
     LED.show()
     delay 2000
 '
