@@ -246,8 +246,10 @@
     goto 100 ' Back to beginning of loop
 '================================================
 ' SHOW TIME routine
-' VAR: n, p, j
+' VAR: n, p, j, o
 500:
+    o = 0 ' number offset
+    if (IO.eeread(17)) = 0 then goto 515 ' check display seconds
     s = IO.getrtc(0) ' seconds
     if s % 10 = 9 and (IO.eeread(15)) = 1 then goto 510 ' seconds flip
     n = s / 10
@@ -267,13 +269,17 @@
     gosub 1000        ' Seconds 1
     j = j - 1
     delay 98          ' approx 0.1 seconds between flips
+    goto 520
+515:
+    o = 10
+    goto 520
 520:
     s = IO.getrtc(1)  ' Minutes
     n = s / 10
-    p = 20
+    p = 20 + o
     gosub 1000        ' Minutes 10
     n = s % 10
-    p = 30
+    p = 30 + o
     gosub 1000        ' Minutes 1
     s = IO.getrtc(2)
     if (IO.eeread(14)) = 0 and s > 12 then let s = s - 12
@@ -281,10 +287,10 @@
     if (IO.eeread(14)) = 0 and s = 0 then let s = 12
                     ' 12 hour clock, hour 0 > 12
     n = s / 10
-    p = 0
+    p = 0 + o
     gosub 1000
     n = s % 10
-    p = 10
+    p = 10 + o
     gosub 1000        ' Hours units
     z = z + 1
     return
