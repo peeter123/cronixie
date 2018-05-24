@@ -79,6 +79,9 @@
 ' System 6: Second flipping mode on / off (default 1)
 '                0 = off
 '                1 = on
+' System 7: Second display on / off (default 1)
+'                0 = off
+'                1 = on
 '
 ' All settings remain in case of power failure (EEPROM).
 ' The alarm is prioritised over the timer and stopwatch.
@@ -116,6 +119,7 @@
 '    IO.eewrite(14, 1)            ' 14 = 24 Hour Clock    (1)
 '    IO.eewrite(15, 1)            ' 15 = Seconds flip     (1)
 '    IO.eewrite(16, 0)            ' 16 = Date format      (0)
+'    IO.eewrite(17, 1)            ' 17 = Show seconds     (1)
 '
 ' Nixie Digit Index
 10: data 5, 0, 6, 1, 7, 2, 8, 3, 9, 4
@@ -571,6 +575,7 @@
     IO.eewrite(14, 1)            ' 14 = 24 Hour Clock (1)
     IO.eewrite(15, 1)            ' 15 = Seconds flip (1)
     IO.eewrite(16, 0)            ' 16 = Date format (0)
+    IO.eewrite(17, 0)            ' 17 = Show seconds (1)
     print "EEPROM reset."
     print " "
     return
@@ -579,7 +584,7 @@
 8050:
     print "       LED-NIXIE Clock"
     print "by Vanessa, partially from Doug"
-    for i = 1 to 16   ' EEPROM data output
+    for i = 1 to 17   ' EEPROM data output
     t = IO.eeread(i)
     print "EEP[";i;"] = ";t
     next i
@@ -662,7 +667,7 @@
     p = 0
 10105:
     z = 0 ' counter
-    IO.setenc(p, 6, 0) ' 0-6 options
+    IO.setenc(p, 7, 0) ' 0-7 options
 10110:
     t = IO.getenc()    ' Read Encoder
     if t = p then goto 10120
@@ -690,7 +695,7 @@
     if p = 4 then goto 20000 ' S4: Party mode on/off
     if p = 5 then goto 12200 ' S5: Slot machine on/off
     if p = 6 then goto 12500 ' S6: Seconds flip on/off
-    'if p = 7 then goto 18000 ' S7:
+    if p = 7 then goto 21000 ' S7: Show seconds on/off
     'if p = 8 then goto 19000 ' S8:
     'if p = 9 then goto 20000 ' S9:
     goto 10110
@@ -1607,6 +1612,36 @@
     if y <> (IO.eeread(9)) then IO.eewrite(9, y) ' Read Partymode Value
     goto 10105
 '================================================
+' S7: Second display on / off
+' VAR: y,t,z,k
+21000:
+    gosub 9100        ' BEEP
+    y = IO.eeread(17) ' Read Second Display Value
+21005:
+    z = 0
+    IO.setenc(y, 1, 0) ' two options
+21010:
+    t = IO.getenc()
+    if t = y then goto 21020
+    y = t
+    z = 0 ' reset counter
+21020:
+    gosub 9000        ' GETKEY
+    if k = 0 then goto 21050 ' no key
+    gosub 9100        ' BEEP, key
+    goto  21070
+21050:
+    LED.irange(0, 0, 59) ' blank LEDs
+    if z & 15 > 10 then goto 21060 ' light pixel 10 out of 15 cycles
+    LED.iled(2, 50 + read 10, y)
+21060:
+    LED.iled(6, read 10, 7) ' 7th option in blue System menu
+    LED.show()
+    z = z + 1
+    if z <= 300 then goto 21010
+    goto 10105 ' return to system menu without save
+21070:
+    if y <> (IO.eeread(17)) then IO.eewrite(17, y) ' Write Seconds flip Value
+    goto 10105
+'================================================
 end
-
-
