@@ -79,9 +79,10 @@
 ' System 6: Second flipping mode on / off (default 1)
 '                0 = off
 '                1 = on
-' System 7: Second display on / off (default 1)
+' System 7: Hide seconds shifted / on / off (default 0)
 '                0 = off
 '                1 = on
+'                2 = shifted time to the center of the clock
 '
 ' All settings remain in case of power failure (EEPROM).
 ' The alarm is prioritised over the timer and stopwatch.
@@ -119,7 +120,7 @@
 '    IO.eewrite(14, 1)            ' 14 = 24 Hour Clock    (1)
 '    IO.eewrite(15, 1)            ' 15 = Seconds flip     (1)
 '    IO.eewrite(16, 0)            ' 16 = Date format      (0)
-'    IO.eewrite(17, 1)            ' 17 = Show seconds     (1)
+'    IO.eewrite(17, 0)            ' 17 = Hide seconds     (0)
 '
 ' Nixie Digit Index
 10: data 5, 0, 6, 1, 7, 2, 8, 3, 9, 4
@@ -249,7 +250,7 @@
 ' VAR: n, p, j, o
 500:
     o = 0 ' number offset
-    if (IO.eeread(17)) = 0 then goto 515 ' check display seconds
+    if (IO.eeread(17)) > 0 then goto 515 ' check hide seconds
     s = IO.getrtc(0) ' seconds
     if s % 10 = 9 and (IO.eeread(15)) = 1 then goto 510 ' seconds flip
     n = s / 10
@@ -271,8 +272,7 @@
     delay 98          ' approx 0.1 seconds between flips
     goto 520
 515:
-    o = 10
-    goto 520
+    if (IO.eeread(17)) = 2 then let o = 10
 520:
     s = IO.getrtc(1)  ' Minutes
     n = s / 10
@@ -701,7 +701,7 @@
     if p = 4 then goto 20000 ' S4: Party mode on/off
     if p = 5 then goto 12200 ' S5: Slot machine on/off
     if p = 6 then goto 12500 ' S6: Seconds flip on/off
-    if p = 7 then goto 21000 ' S7: Show seconds on/off
+    if p = 7 then goto 21000 ' S7: Hide seconds shifted/on/off
     'if p = 8 then goto 19000 ' S8:
     'if p = 9 then goto 20000 ' S9:
     goto 10110
@@ -1618,14 +1618,14 @@
     if y <> (IO.eeread(9)) then IO.eewrite(9, y) ' Read Partymode Value
     goto 10105
 '================================================
-' S7: Second display on / off
+' S7: Hide seconds display shifted / on / off
 ' VAR: y,t,z,k
 21000:
     gosub 9100        ' BEEP
     y = IO.eeread(17) ' Read Second Display Value
 21005:
     z = 0
-    IO.setenc(y, 1, 0) ' two options
+    IO.setenc(y, 2, 0) ' three options
 21010:
     t = IO.getenc()
     if t = y then goto 21020
