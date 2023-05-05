@@ -91,6 +91,10 @@
 '                long press saves, then -->
 '                Short press changes between end hour, end minute (green)
 '                long press saves
+' System 9: Hide seconds shifted / on / off (default 0)
+'                0 = off
+'                1 = on
+'                2 = shifted time to the center of the clock
 '
 '
 ' All settings remain in case of power failure (EEPROM).
@@ -141,6 +145,7 @@
 '    IO.eewrite(20, 0)            ' 20 = Begin Nightmode Minute(0)
 '    IO.eewrite(21, 0)            ' 21 = End Nightmode Hour    (0)
 '    IO.eewrite(22, 0)            ' 22 = End Nightmode Minute  (0)
+'    IO.eewrite(23, 0)            ' 23 = Hide seconds          (0)
 '
 ' Nixie Digit Index
 10: data 5,0,6,1,7,2,8,3,9,4
@@ -274,9 +279,11 @@
     return
 '================================================
 ' SHOW TIME routine
-' VAR: n, p, j
+' VAR: n, p, j, r, o
 500:
+    o = 0 ' number offset
     g = 0
+    if (IO.eeread(23)) > 0 then goto 515 ' check hide seconds
     if r % 10 = 9 and (IO.eeread(15)) = 1 goto 510  ' seconds flip
     if (IO.eeread(17)) > 0 and (IO.eeread(15)) = 0 then g = 1 ' digit fade if not second flip
     n = r % 10
@@ -308,16 +315,19 @@
     gosub 1000        ' Seconds 1
     j = j - 1
     delay 98          ' approx 0.1 seconds between flips
+    goto 520
+515:
+    if (IO.eeread(23)) = 2 then let o = 10
 520:
     if g = 1 and r / 10 = 0 then g = 1 else g = 0 'decide if we need to fade this number
     n = s % 10
-    p = 30
+    p = 30 + o
     i = n - 1
     if i < 0 then i = 9
     gosub 400        ' Minutes 1
     if g = 1 and s % 10 = 0 then g = 1 else g = 0 'decide if we need to fade this number
     n = s / 10
-    p = 20
+    p = 20 + o
     i = n - 1
     if i < 0 then i = 5
     gosub 400        ' Minutes 10
@@ -325,7 +335,7 @@
     if (IO.eeread(14)) = 0 and a > 12 then a = a - 12 ' 12 hour clock, hours 13-23 changed to 1-11
     if (IO.eeread(14)) = 0 and a = 0 then a = 12  ' 12 hour clock, hour 0 = 12
     n = a % 10
-    p = 10
+    p = 10 + o
     i = n - 1
     if i < 0 then i = 9
     if (IO.eeread(14)) = 0 and a / 10 = 0 and n = 1 then i = 2 ' roll to 1:00
@@ -336,7 +346,7 @@
     if (IO.eeread(14)) = 1 and a / 10 = 0 and a % 10 = 0 then i = 1 ' we need to handle the rollover to 0:00
     if g = 1 and i = 1 then g = 1 else g = 0 ' 10s hours flip if our 1s minute is a 0
     n = a / 10
-    p = 0
+    p = 0 + o
     i = n - 1
     if i < 0 and (IO.eeread(14)) = 0 then i = 1
     if i < 0 and (IO.eeread(14)) = 1 then i = 2
@@ -637,6 +647,7 @@
     IO.eewrite(20, 0)            ' 20 = Begin Nightmode Minute (0)
     IO.eewrite(21, 0)            ' 21 = End Nightmode Hour (0)
     IO.eewrite(22, 0)            ' 22 = End Nightmode Minute (0)
+    IO.eewrite(23, 0)            ' 23 = Hide seconds (0)
     print "EEPROM reset."
     print " "
     IO.beep(35)
@@ -648,7 +659,7 @@
 8050:
     print "           LED-NIXIE Clock"
     print "by Vanessa, partially from Doug and Jon"
-     for i = 0 to 22   ' EEPROM data output
+     for i = 0 to 23   ' EEPROM data output
      t = IO.eeread(i)
      print "EEP[";i;"] = ";t
     next i
@@ -728,7 +739,7 @@
     p = 0
 10105:
     z = 0 ' counter
-    IO.setenc(p, 8, 0) ' 0-8 options
+    IO.setenc(p, 9, 0) ' 0-9 options
 10110:
     t = IO.getenc()    ' Read Encoder
     if t = p goto 10120
@@ -757,6 +768,7 @@
     if p = 6 goto 12500 ' S6: Seconds flip on/off
     if p = 7 goto 15100 ' S7: Digit fade
     if p = 8 goto 21000 ' S8: Night mode duration
+    if p = 9 goto 24000 ' S9: Hide seconds shifted/on/off
     goto 10110
 '================================================
 ' S0: BRIGHTNESS SELECTION
@@ -1831,6 +1843,37 @@
     IO.eewrite(22, x) ' end Nightmode Minute
     goto 10105 ' return to system menu
 '================================================
+' S9: Hide seconds display shifted / on / off
+' VAR: y,t,z,k
+24000:
+    gosub 9100        ' BEEP
+    y = IO.eeread(23) ' Read Second Display Value
+24005:
+    z = 0
+    IO.setenc(y, 2, 0) ' three options
+24010:
+    t = IO.getenc()
+    if t = y then goto 24020
+    y = t
+    z = 0 ' reset counter
+24020:
+    gosub 9000        ' GETKEY
+    if k = 0 then goto 24050 ' no key
+    gosub 9100        ' BEEP, key
+    goto  24070
+24050:
+    LED.irange(0, 0, 59) ' blank LEDs
+    if z & 15 > 10 then goto 24060 ' light pixel 10 out of 15 cycles
+    LED.iled(2, 50 + read 10, y)
+24060:
+    LED.iled(6, read 10, 9) ' 9th option in blue System menu
+    LED.show()
+    z = z + 1
+    if z <= 300 then goto 24010
+    goto 10105 ' return to system menu without save
+24070:
+    if y <> (IO.eeread(23)) then IO.eewrite(23, y) ' Write Seconds Hide Value
+    goto 10105
+'================================================
 end
-
 
